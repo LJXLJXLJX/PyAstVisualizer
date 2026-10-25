@@ -1,0 +1,61 @@
+Module(
+  body=[
+    Expr(
+      value=Call(
+        func=Attribute(
+          value=Name(id='builder', ctx=Load()),
+          attr='assign',
+          ctx=Load()),
+        args=[
+          Constant(value='price'),
+          Call(
+            func=Attribute(
+              value=Name(id='Builder', ctx=Load()),
+              attr='add',
+              ctx=Load()),
+            args=[
+              Name(id='base', ctx=Load()),
+              Call(
+                func=Attribute(
+                  value=Name(id='Builder', ctx=Load()),
+                  attr='mul',
+                  ctx=Load()),
+                args=[
+                  Name(id='tax', ctx=Load()),
+                  Name(id='rate', ctx=Load())],
+                keywords=[])],
+            keywords=[])],
+        keywords=[
+          keyword(
+            arg='scope',
+            value=Constant(value='局部'))])),
+    Expr(
+      value=Call(
+        func=Attribute(
+          value=Name(id='builder', ctx=Load()),
+          attr='assign',
+          ctx=Load()),
+        args=[
+          Constant(value='discount'),
+          Call(
+            func=Attribute(
+              value=Name(id='Builder', ctx=Load()),
+              attr='sub',
+              ctx=Load()),
+            args=[
+              Call(
+                func=Attribute(
+                  value=Name(id='Builder', ctx=Load()),
+                  attr='div',
+                  ctx=Load()),
+                args=[
+                  Name(id='price', ctx=Load()),
+                  Constant(value=2)],
+                keywords=[]),
+              Constant(value=1)],
+            keywords=[])],
+        keywords=[
+          keyword(
+            arg='scope',
+            value=Constant(value='局部'))]))],
+  type_ignores=[])

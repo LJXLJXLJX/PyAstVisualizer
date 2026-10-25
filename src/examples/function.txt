@@ -1,0 +1,92 @@
+Module(
+  body=[
+    AsyncFunctionDef(
+      name='fetch',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(
+            arg='url',
+            annotation=Name(id='str', ctx=Load()))],
+        kwonlyargs=[
+          arg(
+            arg='timeout',
+            annotation=Name(id='float', ctx=Load()))],
+        kw_defaults=[
+          Constant(value=1.5)],
+        defaults=[]),
+      body=[
+        Expr(
+          value=Constant(value='抓取页面并返回 JSON。')),
+        AsyncWith(
+          items=[
+            withitem(
+              context_expr=Call(
+                func=Attribute(
+                  value=Name(id='session', ctx=Load()),
+                  attr='get',
+                  ctx=Load()),
+                args=[
+                  Name(id='url', ctx=Load())],
+                keywords=[
+                  keyword(
+                    arg='timeout',
+                    value=Name(id='timeout', ctx=Load()))]),
+              optional_vars=Name(id='resp', ctx=Store()))],
+          body=[
+            Return(
+              value=Await(
+                value=Call(
+                  func=Attribute(
+                    value=Name(id='resp', ctx=Load()),
+                    attr='json',
+                    ctx=Load()),
+                  args=[],
+                  keywords=[])))])],
+      decorator_list=[
+        Call(
+          func=Name(id='decorator', ctx=Load()),
+          args=[],
+          keywords=[
+            keyword(
+              arg='retries',
+              value=Constant(value=3))])],
+      returns=Name(id='dict', ctx=Load()),
+      type_params=[]),
+    FunctionDef(
+      name='greet',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(arg='name'),
+          arg(arg='times')],
+        vararg=arg(arg='args'),
+        kwonlyargs=[
+          arg(arg='greeting')],
+        kw_defaults=[
+          Constant(value='你好')],
+        kwarg=arg(arg='kwargs'),
+        defaults=[
+          Constant(value=1)]),
+      body=[
+        Assign(
+          targets=[
+            Name(id='message', ctx=Store())],
+          value=JoinedStr(
+            values=[
+              FormattedValue(
+                value=Name(id='greeting', ctx=Load()),
+                conversion=-1),
+              Constant(value=', '),
+              FormattedValue(
+                value=Name(id='name', ctx=Load()),
+                conversion=-1),
+              Constant(value='!')])),
+        Return(
+          value=BinOp(
+            left=Name(id='message', ctx=Load()),
+            op=Mult(),
+            right=Name(id='times', ctx=Load())))],
+      decorator_list=[],
+      type_params=[])],
+  type_ignores=[])

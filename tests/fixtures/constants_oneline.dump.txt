@@ -1,0 +1,1 @@
+Module(body=[Assign(targets=[Name(id='x', ctx=Store())], value=Constant(value=1)), Expr(value=Tuple(elts=[Constant(value=(1, '二')), Constant(value=()), Constant(value=(3,)), Constant(value=(1-2j)), Constant(value=-inf), Constant(value=nan), Constant(value=-0.0), Constant(value=True), Constant(value=None)], ctx=Load()))], type_ignores=[])

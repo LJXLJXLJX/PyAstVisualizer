@@ -1,0 +1,66 @@
+Module(
+    body=[
+        Assign(
+            targets=[
+                Name(id='total', ctx=Store())],
+            value=Constant(value=0)),
+        For(
+            target=Tuple(
+                elts=[
+                    Name(id='i', ctx=Store()),
+                    Name(id='item', ctx=Store())],
+                ctx=Store()),
+            iter=Call(
+                func=Name(id='enumerate', ctx=Load()),
+                args=[
+                    Name(id='items', ctx=Load())],
+                keywords=[]),
+            body=[
+                If(
+                    test=Compare(
+                        left=Name(id='item', ctx=Load()),
+                        ops=[
+                            Is()],
+                        comparators=[
+                            Constant(value=None)]),
+                    body=[
+                        Continue()],
+                    orelse=[
+                        If(
+                            test=Compare(
+                                left=Name(id='item', ctx=Load()),
+                                ops=[
+                                    Gt()],
+                                comparators=[
+                                    Constant(value=10)]),
+                            body=[
+                                Break()],
+                            orelse=[])]),
+                AugAssign(
+                    target=Name(id='total', ctx=Store()),
+                    op=Add(),
+                    value=BinOp(
+                        left=Name(id='item', ctx=Load()),
+                        op=Mult(),
+                        right=Name(id='i', ctx=Load())))],
+            orelse=[
+                Expr(
+                    value=Call(
+                        func=Name(id='print', ctx=Load()),
+                        args=[
+                            Constant(value='完成')],
+                        keywords=[]))]),
+        While(
+            test=Compare(
+                left=Name(id='total', ctx=Load()),
+                ops=[
+                    Gt()],
+                comparators=[
+                    Constant(value=0)]),
+            body=[
+                AugAssign(
+                    target=Name(id='total', ctx=Store()),
+                    op=Sub(),
+                    value=Constant(value=1))],
+            orelse=[])],
+    type_ignores=[])

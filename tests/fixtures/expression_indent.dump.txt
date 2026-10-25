@@ -1,0 +1,104 @@
+Module(
+  body=[
+    Assign(
+      targets=[
+        Name(id='squares', ctx=Store())],
+      value=ListComp(
+        elt=BinOp(
+          left=Name(id='x', ctx=Load()),
+          op=Pow(),
+          right=Constant(value=2)),
+        generators=[
+          comprehension(
+            target=Name(id='x', ctx=Store()),
+            iter=Call(
+              func=Name(id='range', ctx=Load()),
+              args=[
+                Constant(value=10)],
+              keywords=[]),
+            ifs=[
+              Compare(
+                left=BinOp(
+                  left=Name(id='x', ctx=Load()),
+                  op=Mod(),
+                  right=Constant(value=2)),
+                ops=[
+                  Eq()],
+                comparators=[
+                  Constant(value=0)])],
+            is_async=0)])),
+    Assign(
+      targets=[
+        Name(id='mapping', ctx=Store())],
+      value=DictComp(
+        key=Name(id='k', ctx=Load()),
+        value=Name(id='v', ctx=Load()),
+        generators=[
+          comprehension(
+            target=Tuple(
+              elts=[
+                Name(id='k', ctx=Store()),
+                Name(id='v', ctx=Store())],
+              ctx=Store()),
+            iter=Name(id='pairs', ctx=Load()),
+            ifs=[],
+            is_async=0)])),
+    Assign(
+      targets=[
+        Name(id='value', ctx=Store())],
+      value=IfExp(
+        test=Name(id='flag', ctx=Load()),
+        body=BinOp(
+          left=BinOp(
+            left=BinOp(
+              left=Name(id='a', ctx=Load()),
+              op=Add(),
+              right=Name(id='b', ctx=Load())),
+            op=Mult(),
+            right=UnaryOp(
+              op=USub(),
+              operand=Name(id='c', ctx=Load()))),
+          op=Div(),
+          right=Name(id='d', ctx=Load())),
+        orelse=Lambda(
+          args=arguments(
+            posonlyargs=[],
+            args=[
+              arg(arg='y')],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[]),
+          body=Subscript(
+            value=Name(id='y', ctx=Load()),
+            slice=Slice(
+              lower=Constant(value=1),
+              upper=Constant(value=3)),
+            ctx=Load())))),
+    Assign(
+      targets=[
+        Name(id='ok', ctx=Store())],
+      value=BoolOp(
+        op=Or(),
+        values=[
+          BoolOp(
+            op=And(),
+            values=[
+              Compare(
+                left=Constant(value=0),
+                ops=[
+                  Lt(),
+                  LtE()],
+                comparators=[
+                  Name(id='x', ctx=Load()),
+                  Constant(value=10)]),
+              UnaryOp(
+                op=Not(),
+                operand=Name(id='done', ctx=Load()))]),
+          Subscript(
+            value=Attribute(
+              value=Name(id='obj', ctx=Load()),
+              attr='attr',
+              ctx=Load()),
+            slice=Constant(value='键'),
+            ctx=Load())]))],
+  type_ignores=[])
