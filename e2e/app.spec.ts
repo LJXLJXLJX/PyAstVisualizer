@@ -40,8 +40,8 @@ async function dragBy(page: Page, id: string, dx: number, dy: number) {
 }
 
 async function loadText(page: Page, text: string) {
-  await page.getByLabel('ast.dump 文本').fill(text);
-  await page.getByRole('button', { name: '解析并绘图' }).click();
+  await page.getByLabel('ast.dump text').fill(text);
+  await page.getByRole('button', { name: 'Parse & draw' }).click();
 }
 
 const SAMPLE =
@@ -64,9 +64,33 @@ test('在 GitHub Pages 子路径下加载，静态资源无 404', async ({ page 
   expect(failures).toEqual([]);
 });
 
+test('默认英文界面，EN/中文 全局切换并在刷新后保持', async ({ page }) => {
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.getByRole('button', { name: 'Parse & draw' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Re-arrange' })).toBeVisible();
+  // 先制造一个解析错误，切换语言后错误信息跟着切换
+  await loadText(page, 'Name(id=foo)');
+  await expect(page.getByRole('alert')).toContainText("Unknown name 'foo'");
+
+  await page.getByRole('button', { name: '中文' }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await expect(page.getByRole('button', { name: '解析并绘图' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '重新排列' })).toBeVisible();
+  await expect(page.getByLabel('显示收纳字段')).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('第 1 行，第 9 列');
+  await expect(page.getByRole('alert')).toContainText("无法识别的名称 'foo'");
+  await expect(page.locator('.stats')).toContainText('张卡片');
+
+  await page.reload();
+  await expect(page.getByRole('button', { name: '解析并绘图' })).toBeVisible();
+  await page.getByRole('button', { name: 'EN' }).click();
+  await expect(page.getByRole('button', { name: 'Parse & draw' })).toBeVisible();
+  await expect(page.locator('.stats')).toContainText('cards');
+});
+
 test('粘贴导入并绘图：节点数与连线数和 AST 对应', async ({ page }) => {
   await loadText(page, SAMPLE);
-  await expect(page.locator('.parse-ok')).toContainText('解析成功');
+  await expect(page.locator('.parse-ok')).toContainText('Parsed:');
   // 内联无字段节点后：Module, Assign, Name, BinOp, Constant, Call, Name, Constant, Expr, Name = 10
   await expect(page.locator('.react-flow__node')).toHaveCount(10);
   await expect(page.locator('.react-flow__edge')).toHaveCount(9);
@@ -78,14 +102,14 @@ test('解析错误显示行列和原因，不改变当前画布', async ({ page 
   const before = await page.locator('.react-flow__node').count();
   await loadText(page, "Module(\n  body=[Name(id='a' ctx=Load())],\n)");
   const alert = page.getByRole('alert');
-  await expect(alert).toContainText('第 2 行，第 21 列');
-  await expect(alert).toContainText("期望 ',' 或 ')'");
+  await expect(alert).toContainText('line 2, column 21');
+  await expect(alert).toContainText("Expected ',' or ')'");
   await expect(page.locator('.react-flow__node')).toHaveCount(before);
 });
 
 test('打开本地文本文件', async ({ page }) => {
   await page.getByTestId('file-input').setInputFiles(join(FIXTURES, 'loop_indent.dump.txt'));
-  await expect(page.locator('.parse-ok')).toContainText('解析成功');
+  await expect(page.locator('.parse-ok')).toContainText('Parsed:');
   await expect(node(page, '$.body[1]')).toContainText('For');
 });
 
@@ -116,11 +140,12 @@ test('删除键与端口拖拽不能改变 AST', async ({ page }) => {
   await page.keyboard.press('Delete');
   await page.keyboard.press('Backspace');
   // 框选全部后再按删除
-  await page.getByRole('button', { name: '适应屏幕' }).click();
+  await page.getByRole('button', { name: 'Fit to screen' }).click();
   await page.waitForTimeout(400);
   const pane = (await page.locator('.react-flow__pane').boundingBox())!;
   await page.keyboard.down('Shift');
-  await page.mouse.move(pane.x + 5, pane.y + 70);
+  const bar = (await page.locator('.toolbar').boundingBox())!;
+  await page.mouse.move(pane.x + 5, bar.y + bar.height + 10);
   await page.mouse.down();
   await page.mouse.move(pane.x + pane.width - 5, pane.y + pane.height - 5, { steps: 10 });
   await page.mouse.up();
@@ -145,12 +170,13 @@ test('删除键与端口拖拽不能改变 AST', async ({ page }) => {
 });
 
 test('框选后多个节点一起移动', async ({ page }) => {
-  await page.getByRole('button', { name: '适应屏幕' }).click();
+  await page.getByRole('button', { name: 'Fit to screen' }).click();
   await page.waitForTimeout(400);
   const before = await snapshot(page);
   const pane = (await page.locator('.react-flow__pane').boundingBox())!;
   await page.keyboard.down('Shift');
-  await page.mouse.move(pane.x + pane.width * 0.45, pane.y + 70);
+  const bar = (await page.locator('.toolbar').boundingBox())!;
+  await page.mouse.move(pane.x + pane.width * 0.45, bar.y + bar.height + 10);
   await page.mouse.down();
   await page.mouse.move(pane.x + pane.width * 0.8, pane.y + pane.height * 0.6, { steps: 10 });
   await page.mouse.up();
@@ -195,7 +221,7 @@ test('滚轮缩放、拖动平移、小地图与适应屏幕', async ({ page }) 
   const t2 = await viewport.getAttribute('style');
   expect(t2).not.toBe(t1);
   await expect(page.locator('.react-flow__minimap')).toBeVisible();
-  await page.getByRole('button', { name: '适应屏幕' }).click();
+  await page.getByRole('button', { name: 'Fit to screen' }).click();
   await page.waitForTimeout(400);
   expect(await viewport.getAttribute('style')).not.toBe(t2);
 });
@@ -203,14 +229,14 @@ test('滚轮缩放、拖动平移、小地图与适应屏幕', async ({ page }) 
 test('折叠与展开子树，展开后子节点相对位置保留', async ({ page }) => {
   const before = await snapshot(page);
   const id = '$.body[0]';
-  await node(page, id).getByRole('button', { name: '折叠子树' }).click();
-  await expect(node(page, id)).toContainText('已折叠');
+  await node(page, id).getByRole('button', { name: 'Collapse subtree' }).click();
+  await expect(node(page, id)).toContainText('descendants collapsed');
   const collapsed = await snapshot(page);
   expect(collapsed.nodes.length).toBeLessThan(before.nodes.length);
   expect(collapsed.nodes.some((n) => n.startsWith(`${id}.`))).toBe(false);
   expect(collapsed.ast).toBe(before.ast);
 
-  await node(page, id).getByRole('button', { name: '展开子树' }).click();
+  await node(page, id).getByRole('button', { name: 'Expand subtree' }).click();
   const expanded = await snapshot(page);
   expect([...expanded.nodes].sort()).toEqual([...before.nodes].sort());
   for (const n of before.nodes) expect(expanded.positions[n]).toEqual(before.positions[n]);
@@ -223,7 +249,7 @@ test('重新排列恢复自动布局，普通交互不触发重排', async ({ pa
   const moved = await snapshot(page);
   expect(moved.positions['$.body[0]']).not.toEqual(before.positions['$.body[0]']);
   expect(moved.positions['$.body[1]']).toEqual(before.positions['$.body[1]']);
-  await page.getByRole('button', { name: '重新排列' }).click();
+  await page.getByRole('button', { name: 'Re-arrange' }).click();
   await page.waitForTimeout(400);
   const after = await snapshot(page);
   expect(after.positions).toEqual(before.positions);
@@ -237,11 +263,11 @@ test('点击节点查看并复制完整属性', async ({ page, context }) => {
   const summary = await constant.locator('.row__val').first().textContent();
   expect(summary!.endsWith('…')).toBe(true);
   await constant.locator('.ast-node__title').click();
-  const panel = page.getByLabel('节点详情');
+  const panel = page.getByLabel('Node details');
   await expect(panel).toContainText('Constant');
   await expect(panel.locator('pre.decoded')).toHaveText(long);
-  await panel.locator('.detail-value').getByRole('button', { name: '复制' }).click();
-  await expect(panel.getByRole('button', { name: '已复制' })).toBeVisible();
+  await panel.locator('.detail-value').getByRole('button', { name: 'Copy', exact: true }).click();
+  await expect(panel.getByRole('button', { name: 'Copied' })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(long);
 });
 
@@ -249,16 +275,16 @@ test('收纳字段可通过开关显示', async ({ page }) => {
   const fn = node(page, '$.body[0]');
   await expect(fn.locator('.row-more')).toBeVisible();
   await expect(fn.locator('.row', { hasText: 'type_params' })).toHaveCount(0);
-  await page.getByLabel('显示收纳字段').check();
+  await page.getByLabel('Show hidden fields').check();
   await expect(fn.locator('.row', { hasText: 'type_params' })).toHaveCount(1);
-  await page.getByLabel('内联无字段节点').uncheck();
+  await page.getByLabel('Inline field-less nodes').uncheck();
   await expect(node(page, '$.body[0].body[0].value.ctx')).toHaveCount(0);
   expect(await dbg(page, (d) => d.nodeIds().some((n) => n.endsWith('.ctx')))).toBe(true);
 });
 
 test('导出 PNG 图片', async ({ page }) => {
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: '导出 PNG' }).click();
+  await page.getByRole('button', { name: 'Export PNG' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('python-ast.png');
   const path = await download.path();
@@ -269,41 +295,41 @@ test('导出 PNG 图片', async ({ page }) => {
   expect(width).toBeGreaterThan(500);
   expect(height).toBeGreaterThan(300);
   expect(buf.length).toBeGreaterThan(20_000);
-  await expect(page.getByRole('status')).toContainText('已导出 PNG');
+  await expect(page.getByRole('status')).toContainText('PNG exported');
 });
 
 test('超过导出上限时给出明确提示而不是卡死', async ({ page }) => {
   await loadText(page, `Module(body=[${"Global(names=['x']), ".repeat(1600)}], type_ignores=[])`);
-  await page.getByRole('button', { name: '全部展开' }).click();
-  await expect(page.locator('.stats')).toContainText('显示 1601 / 1601');
-  await page.getByRole('button', { name: '导出 PNG' }).click();
-  await expect(page.getByRole('status')).toContainText('超过导出上限 1,500 张');
+  await page.getByRole('button', { name: 'Expand all' }).click();
+  await expect(page.locator('.stats')).toContainText('Showing 1,601 / 1,601');
+  await page.getByRole('button', { name: 'Export PNG' }).click();
+  await expect(page.getByRole('status')).toContainText('over the export limit of 1,500');
 });
 
 test('大输入：自动折叠并在展开约千节点时仍可交互', async ({ page }) => {
   const file = join(FIXTURES, 'stdlib_textwrap_attributes.dump.txt');
   const t0 = Date.now();
   await page.getByTestId('file-input').setInputFiles(file);
-  await expect(page.getByRole('status')).toContainText('已自动折叠');
+  await expect(page.getByRole('status')).toContainText('collapsed automatically');
   const importMs = Date.now() - t0;
   const total = await dbg(page, (d) => d.totalNodes());
   const visible = await page.locator('.react-flow__node').count();
   expect(visible).toBeLessThanOrEqual(600);
 
   const t1 = Date.now();
-  await page.getByRole('button', { name: '全部展开' }).click();
+  await page.getByRole('button', { name: 'Expand all' }).click();
   await expect(page.locator('.react-flow__node')).toHaveCount(total, { timeout: 30_000 });
   const expandMs = Date.now() - t1;
 
   const t2 = Date.now();
-  await page.getByRole('button', { name: '重新排列' }).click();
+  await page.getByRole('button', { name: 'Re-arrange' }).click();
   await page.waitForTimeout(50);
   const relayoutMs = Date.now() - t2;
 
-  await page.getByRole('button', { name: '适应屏幕' }).click();
+  await page.getByRole('button', { name: 'Fit to screen' }).click();
   await page.waitForTimeout(400);
   const id = (await dbg(page, (d) => d.nodeIds()))[1]!;
-  await page.getByRole('button', { name: '适应屏幕' }).click();
+  await page.getByRole('button', { name: 'Fit to screen' }).click();
   const t3 = Date.now();
   const n = node(page, id);
   await n.scrollIntoViewIfNeeded();
@@ -316,7 +342,7 @@ test('大输入：自动折叠并在展开约千节点时仍可交互', async ({
 
   const t4 = Date.now();
   const downloadPromise = page.waitForEvent('download', { timeout: 60_000 });
-  await page.getByRole('button', { name: '导出 PNG' }).click();
+  await page.getByRole('button', { name: 'Export PNG' }).click();
   await downloadPromise;
   const exportMs = Date.now() - t4;
   console.log(

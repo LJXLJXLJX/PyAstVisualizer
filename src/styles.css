@@ -247,15 +247,49 @@ pre {
 }
 
 /* ---------- 画布与工具栏 ---------- */
-.sidebar-toggle {
+.corner-controls {
   position: absolute;
   z-index: 10;
   left: 8px;
   top: 21px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.lang-switch button {
+  appearance: none;
+  border: 0;
+  background: var(--panel-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.lang-switch button + button {
+  border-left: 1px solid var(--border);
+}
+
+.lang-switch button.is-active {
+  background: #2f5fb8;
+  color: #fff;
 }
 
 .toolbar {
-  margin-left: 44px !important;
+  margin-left: 130px !important;
+}
+
+.sidebar-closed .toolbar {
+  margin-left: 180px !important;
 }
 
 .toolbar {

@@ -78,22 +78,42 @@ export interface ParseResult {
   readonly stats: ParseStats;
 }
 
+export type Lang = 'en' | 'zh';
+
+/** 同时携带英文和中文的文本，界面切换语言时无需重新解析 */
+export interface Bilingual {
+  readonly en: string;
+  readonly zh: string;
+}
+
 export class AstParseError extends Error {
   readonly offset: number;
   /** 1 起始的行号 */
   readonly line: number;
   /** 1 起始的列号（按 Unicode 码点计数） */
   readonly column: number;
-  readonly reason: string;
+  /** 两种语言的错误原因 */
+  readonly reasons: Bilingual;
 
-  constructor(reason: string, source: string, offset: number) {
+  constructor(reasons: Bilingual, source: string, offset: number) {
     const { line, column } = offsetToLineColumn(source, offset);
-    super(`第 ${line} 行，第 ${column} 列：${reason}`);
+    super(`Line ${line}, column ${column}: ${reasons.en}`);
     this.name = 'AstParseError';
-    this.reason = reason;
+    this.reasons = reasons;
     this.offset = offset;
     this.line = line;
     this.column = column;
+  }
+
+  /** 英文错误原因 */
+  get reason(): string {
+    return this.reasons.en;
+  }
+
+  format(lang: Lang): string {
+    return lang === 'zh'
+      ? `第 ${this.line} 行，第 ${this.column} 列：${this.reasons.zh}`
+      : `Line ${this.line}, column ${this.column}: ${this.reasons.en}`;
   }
 }
 

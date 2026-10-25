@@ -50,16 +50,16 @@ print(ast.dump(ast.parse(source), indent=2))
 
 - Dark grid background. Card titles are node types, colour-coded by category (definitions, control flow, statements, access/calls, names, literals, operators, …).
 - Simple attributes such as `name`, `id` and `value` appear inside the card. Child nodes connect from field ports on the right, and list items keep their order and index (`body[0]`, `body[1]`, …). Each card header also shows the field name it occupies in its parent, so both ends of an edge are labelled.
-- `None`, empty lists and position info (`lineno` etc.) are folded into a single "+N hidden" row by default. Tick "显示收纳字段" (show hidden fields) to show them on the cards; the details panel always lists every field.
+- `None`, empty lists and position info (`lineno` etc.) are folded into a single "+N hidden" row by default. Tick "Show hidden fields" to show them on the cards; the details panel always lists every field.
 - Long text is summarised on the card. Click a card to see the full repr and the decoded string in the details panel, and to copy a single attribute, the node path, or the node's original dump text.
-- **Inline no-field nodes** (on by default): nodes without fields such as `Load()`, `Store()` and `Add()` are shown as attributes on the parent card instead of separate cards, so every `Name` doesn't sprout an extra `Load` card. Untick "内联无字段节点" to give every AST node its own card.
+- **Inline field-less nodes** (on by default): nodes without fields such as `Load()`, `Store()` and `Add()` are shown as attributes on the parent card instead of separate cards, so every `Name` doesn't sprout an extra `Load` card. Untick "Inline field-less nodes" to give every AST node its own card.
 
 **Interaction**
 
 - Drag cards. Shift+drag to box-select and ⌘/Ctrl+click to multi-select; selected cards move together.
 - Drag empty space to pan, scroll to zoom, use the minimap, or fit to screen.
-- Collapse and expand subtrees with ▾/▸ in the card's top-right corner; "全部展开" (expand all) and "全部折叠" (collapse all) are also available.
-- The graph is auto-laid out once on import. After that, dragging, selecting and collapsing/expanding **never** rearrange existing cards. Collapsing remembers each child's offset from its parent, and expanding restores it relative to the parent's current position. Newly revealed cards are laid out locally. Click "重新排列" (re-arrange) whenever you want a fresh layout.
+- Collapse and expand subtrees with ▾/▸ in the card's top-right corner; "Expand all" and "Collapse all" are also available.
+- The graph is auto-laid out once on import. After that, dragging, selecting and collapsing/expanding **never** rearrange existing cards. Collapsing remembers each child's offset from its parent, and expanding restores it relative to the parent's current position. Newly revealed cards are laid out locally. Click "Re-arrange" whenever you want a fresh layout.
 - PNG export includes every visible card and edge, cropped to the content bounds.
 
 **Read-only guarantees**
@@ -68,7 +68,7 @@ print(ast.dump(ast.parse(source), indent=2))
 - The canvas only accepts position, selection and dimension-measurement changes; changes that remove, add or replace nodes are dropped. The Delete key is disabled, ports have `isConnectable=false`, and edges can't be reconnected or deleted.
 - The AST / graph model (`src/parser`, `src/graph/model.ts`) is kept separate from the view state (positions, collapse, selection — `src/graph/view.ts`).
 
-> The UI text is currently in Chinese only.
+**Language**: the UI is in English by default. The global EN / 中文 switch in the top-left corner of the canvas changes every label, notice and parse error (including an error already on screen) without re-parsing; the choice is remembered in the browser.
 
 ## Supported input
 
@@ -96,7 +96,7 @@ complex  := '(' NUMBER SIGNED_IMAG ')'          e.g. (1+2j)
 
 **Explicitly unsupported (reported as errors, never silently dropped)**: triple-quoted strings, `\N{...}` named escapes (Python's repr never produces either), comments, unparseable reprs like `<object at 0x…>`, and several dumps in one input. A call like `frozenset({1})` is shown as a node named `frozenset`.
 
-Error messages give the line, the column (counted in Unicode characters, so a CJK character is one column) and the reason, for example `第 2 行，第 21 列：节点 Name 的字段之间期望 ',' 或 ')'，实际是 'ctx'` ("line 2, column 21: expected ',' or ')' between fields of node Name, got 'ctx'"). The input panel highlights the offending character.
+Error messages give the line, the column (counted in Unicode characters, so a CJK character is one column) and the reason, for example `Line 2, column 21: Expected ',' or ')' between fields of node Name, got 'ctx'`. Every error message exists in both English and Chinese. The input panel highlights the offending character.
 
 ## Limits and performance
 
@@ -123,7 +123,7 @@ In short, **a few hundred to about a thousand cards browse smoothly**. Several t
 
 Other known limitations:
 
-- The initial Dagre layout turns off crossing minimisation to keep field order. Cards revealed by expanding may overlap existing ones; click "重新排列" (re-arrange) to fix that.
+- The initial Dagre layout turns off crossing minimisation to keep field order. Cards revealed by expanding may overlap existing ones; click "Re-arrange" to fix that.
 - Toggling hidden fields changes card heights but doesn't re-lay out automatically (by design, ordinary interaction never re-lays out).
 - Export relies on `html-to-image` cloning the DOM; PNG only, no SVG.
 - Dark theme only. The UI targets desktop browsers; narrow screens work but aren't comfortable.

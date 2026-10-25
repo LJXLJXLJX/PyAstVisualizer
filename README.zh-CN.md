@@ -68,6 +68,8 @@ print(ast.dump(ast.parse(source), indent=2))
 - 画布只接收位置、选择、尺寸测量这三类变更，删除/新增/替换节点的变更被丢弃；删除键已禁用；端口 `isConnectable=false`，连线不可重连、不可删除。
 - AST/图模型（`src/parser`、`src/graph/model.ts`）与视图状态（坐标、折叠、选择，`src/graph/view.ts`）分开管理。
 
+**界面语言**：默认英文。画布左上角的全局 EN / 中文 按钮可切换全部按钮、提示和解析错误（包括已显示的错误），无需重新解析；选择会保存在浏览器中。本文中的按钮名称对应中文界面。
+
 ## 支持的输入格式
 
 文法（详见 `src/parser/parser.ts`）：

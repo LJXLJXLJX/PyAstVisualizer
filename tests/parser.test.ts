@@ -156,7 +156,8 @@ describe('字符串与转义', () => {
     const e = parseError("Constant(value='abc\ndef')");
     expect(e.line).toBe(1);
     expect(e.column).toBe(16);
-    expect(e.reason).toContain('换行');
+    expect(e.reasons.zh).toContain('换行');
+    expect(e.reason).toContain('line break');
   });
 });
 
@@ -225,34 +226,40 @@ describe('非法输入', () => {
   for (const [title, src, line, column, reason] of cases) {
     it(`${title}：报告第 ${line} 行第 ${column} 列`, () => {
       const e = parseError(src);
-      expect(e.reason).toContain(reason);
+      expect(e.reasons.zh).toContain(reason);
       expect([e.line, e.column]).toEqual([line, column]);
-      expect(e.message).toBe(`第 ${line} 行，第 ${column} 列：${e.reason}`);
+      // 两种语言都有原因文本，英文原因不含中文
+      expect(e.reasons.en.length).toBeGreaterThan(5);
+      expect(e.reasons.en).not.toMatch(/[\u4e00-\u9fff]/);
+      expect(e.message).toBe(`Line ${line}, column ${column}: ${e.reasons.en}`);
+      expect(e.format('en')).toBe(e.message);
+      expect(e.format('zh')).toBe(`第 ${line} 行，第 ${column} 列：${e.reasons.zh}`);
     });
   }
 
   it('多行输入中定位到正确行列，中文按字符计数', () => {
     const e = parseError("Module(\n  body=[\n    Expr(value=Constant(value='中文'), 错误)])");
     expect([e.line, e.column]).toEqual([3, 38]);
-    expect(e.reason).toContain('位置参数');
+    expect(e.reasons.zh).toContain('位置参数');
+    expect(e.reason).toBe('Positional argument after a named field in node Expr');
   });
 
   it('超过最大深度时报错', () => {
     const deep = 'A(x='.repeat(50) + 'None' + ')'.repeat(50);
-    expect(() => parseAstDump(deep, { maxDepth: 40 })).toThrow(/嵌套过深/);
+    expect(() => parseAstDump(deep, { maxDepth: 40 })).toThrow(/Nesting too deep/);
     expect(parseAstDump(deep, { maxDepth: 60 }).stats.maxDepth).toBe(50);
   });
 
   it('默认深度上限可以安全报错而不是栈溢出', () => {
     const deep = '['.repeat(100_000);
     const src = 'A(x=' + deep;
-    expect(() => parseAstDump(src)).toThrow(/嵌套过深/);
+    expect(() => parseAstDump(src)).toThrow(/Nesting too deep/);
   });
 
   it('超大输入与节点过多时报错', () => {
-    expect(() => parseAstDump('Pass()' + ' '.repeat(100), { maxInputChars: 50 })).toThrow(/输入过大/);
+    expect(() => parseAstDump('Pass()' + ' '.repeat(100), { maxInputChars: 50 })).toThrow(/Input too large/);
     const many = `Module(body=[${'Pass(), '.repeat(20)}])`;
-    expect(() => parseAstDump(many, { maxNodes: 10 })).toThrow(/节点过多/);
+    expect(() => parseAstDump(many, { maxNodes: 10 })).toThrow(/Too many nodes/);
   });
 });
 

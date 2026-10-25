@@ -60,8 +60,8 @@ export function tokenize(source: string): Token[] {
   const n = source.length;
   let i = 0;
 
-  const fail = (reason: string, at: number): never => {
-    throw new AstParseError(reason, source, at);
+  const fail = (en: string, zh: string, at: number): never => {
+    throw new AstParseError({ en, zh }, source, at);
   };
 
   while (i < n) {
@@ -96,7 +96,7 @@ export function tokenize(source: string): Token[] {
         i = end;
         continue;
       }
-      fail(`意外的字符 '${ch}'：符号只能出现在数字字面量前`, i);
+      fail(`Unexpected character '${ch}': a sign may only precede a number`, `意外的字符 '${ch}'：符号只能出现在数字字面量前`, i);
     }
 
     if (isDigit(ch)) {
@@ -130,12 +130,17 @@ export function tokenize(source: string): Token[] {
     }
 
     if (ch === '<') {
-      fail("遇到 '<'：ast.dump 中出现了无法解析的对象表示（如 <object at 0x...>），请确认字段值是 AST 节点或 Python 字面量", i);
+      fail(
+        "Found '<': the dump contains an unparseable object repr (such as <object at 0x...>); field values must be AST nodes or Python literals",
+        "遇到 '<'：ast.dump 中出现了无法解析的对象表示（如 <object at 0x...>），请确认字段值是 AST 节点或 Python 字面量",
+        i,
+      );
     }
     if (ch === '#') {
-      fail("不支持注释：'#' 不属于 ast.dump 输出格式", i);
+      fail("Comments are not supported: '#' is not part of ast.dump output", "不支持注释：'#' 不属于 ast.dump 输出格式", i);
     }
-    fail(`意外的字符 '${chFull}' (U+${cp.toString(16).toUpperCase().padStart(4, '0')})`, i);
+    const code = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+    fail(`Unexpected character '${chFull}' (${code})`, `意外的字符 '${chFull}' (${code})`, i);
   }
 
   tokens.push({ type: 'eof', text: '', start: n, end: n });
@@ -143,12 +148,12 @@ export function tokenize(source: string): Token[] {
 
   function readNumber(start: number, digitsStart: number): number {
     const m = NUMBER_RE.exec(source.slice(digitsStart, digitsStart + 400));
-    if (!m || m[0].length === 0) return fail('无效的数字字面量', start);
+    if (!m || m[0].length === 0) return fail('Invalid number literal', '无效的数字字面量', start);
     const end = digitsStart + m[0].length;
     // 数字后紧跟标识符字符，如 "12abc"
     const after = source[end];
     if (after !== undefined && ID_CONTINUE.test(after)) {
-      fail('无效的数字字面量', start);
+      fail('Invalid number literal', '无效的数字字面量', start);
     }
     tokens.push({ type: 'number', text: source.slice(start, end), start, end });
     return end;
@@ -159,7 +164,11 @@ export function tokenize(source: string): Token[] {
     const isBytes = prefix.includes('b');
     const isRaw = prefix.includes('r');
     if (source[quotePos + 1] === quote && source[quotePos + 2] === quote) {
-      fail('不支持三引号字符串（ast.dump 使用 repr，不会产生三引号）', start);
+      fail(
+        'Triple-quoted strings are not supported (ast.dump uses repr, which never produces them)',
+        '不支持三引号字符串（ast.dump 使用 repr，不会产生三引号）',
+        start,
+      );
     }
     let j = quotePos + 1;
     let out = '';
@@ -169,7 +178,9 @@ export function tokenize(source: string): Token[] {
       if (isBytes) {
         for (const c of s) {
           const code = c.codePointAt(0)!;
-          if (code > 0x7f) fail('字节串中只能包含 ASCII 字符，非 ASCII 字节需用 \\x 转义', at);
+          if (code > 0x7f) {
+            fail('Bytes literals may only contain ASCII characters; escape other bytes with \\x', '字节串中只能包含 ASCII 字符，非 ASCII 字节需用 \\x 转义', at);
+          }
           bytes.push(code);
         }
       } else {
@@ -182,14 +193,14 @@ export function tokenize(source: string): Token[] {
     };
 
     while (true) {
-      if (j >= n) fail('字符串没有结束引号', start);
+      if (j >= n) fail('Unterminated string: missing closing quote', '字符串没有结束引号', start);
       const c = source[j]!;
       if (c === quote) {
         j++;
         break;
       }
       if (c === '\n' || c === '\r') {
-        fail('字符串内出现未转义的换行（repr 中的换行应写作 \\n）', start);
+        fail('Unescaped line break inside a string (repr writes it as \\n)', '字符串内出现未转义的换行（repr 中的换行应写作 \\n）', start);
       }
       if (c !== '\\') {
         const cp = source.codePointAt(j)!;
@@ -201,7 +212,7 @@ export function tokenize(source: string): Token[] {
       // 反斜杠转义
       const escAt = j;
       const e = source[j + 1];
-      if (e === undefined) fail('字符串没有结束引号', start);
+      if (e === undefined) fail('Unterminated string: missing closing quote', '字符串没有结束引号', start);
       if (isRaw) {
         // 原始字符串：反斜杠保留，但仍可以转义引号
         pushChar('\\' + e, escAt);
@@ -234,7 +245,7 @@ export function tokenize(source: string): Token[] {
       }
       if (e === 'x') {
         const hex = source.slice(j + 2, j + 4);
-        if (!/^[0-9a-fA-F]{2}$/.test(hex)) fail('\\x 转义需要 2 位十六进制数字', escAt);
+        if (!/^[0-9a-fA-F]{2}$/.test(hex)) fail('\\x escape needs 2 hex digits', '\\x 转义需要 2 位十六进制数字', escAt);
         pushByte(parseInt(hex, 16));
         j += 4;
         continue;
@@ -242,15 +253,21 @@ export function tokenize(source: string): Token[] {
       if (!isBytes && (e === 'u' || e === 'U')) {
         const len = e === 'u' ? 4 : 8;
         const hex = source.slice(j + 2, j + 2 + len);
-        if (!new RegExp(`^[0-9a-fA-F]{${len}}$`).test(hex)) fail(`\\${e} 转义需要 ${len} 位十六进制数字`, escAt);
+        if (!new RegExp(`^[0-9a-fA-F]{${len}}$`).test(hex)) {
+          fail(`\\${e} escape needs ${len} hex digits`, `\\${e} 转义需要 ${len} 位十六进制数字`, escAt);
+        }
         const v = parseInt(hex, 16);
-        if (v > 0x10ffff) fail(`\\${e} 转义超出 Unicode 范围`, escAt);
+        if (v > 0x10ffff) fail(`\\${e} escape is outside the Unicode range`, `\\${e} 转义超出 Unicode 范围`, escAt);
         out += v <= 0xffff ? String.fromCharCode(v) : String.fromCodePoint(v);
         j += 2 + len;
         continue;
       }
       if (!isBytes && e === 'N') {
-        fail('不支持 \\N{...} 命名转义（Python repr 不会生成该形式）', escAt);
+        fail(
+          '\\N{...} named escapes are not supported (Python repr never produces them)',
+          '不支持 \\N{...} 命名转义（Python repr 不会生成该形式）',
+          escAt,
+        );
       }
       // 未知转义：与 Python 一致，保留反斜杠
       pushChar('\\', escAt);

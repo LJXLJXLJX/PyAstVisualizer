@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildGraph, initialCollapse, type NodeCategory } from '../graph/model';
 import { filterNodeChanges } from '../graph/readonly';
 import { initialView, reconcile, relayout, revealCollapsed, type AstFlowNode, type PositionCache, type ViewState } from '../graph/view';
+import { useI18n, type Bilingual } from '../i18n/context';
 import type { ParseResult } from '../parser';
 import { AstNodeCard } from './AstNodeCard';
 import { CanvasActionsContext } from './canvasContext';
@@ -46,10 +47,11 @@ const CATEGORY_COLORS: Record<NodeCategory, string> = {
 
 interface Props {
   result: ParseResult;
-  onNotice: (msg: string | null) => void;
+  onNotice: (msg: Bilingual | null) => void;
 }
 
 export function AstCanvas({ result, onNotice }: Props) {
+  const { tr, num } = useI18n();
   const flow = useReactFlow<AstFlowNode, Edge>();
   const updateNodeInternals = useUpdateNodeInternals();
   const [inlineEmpty, setInlineEmpty] = useState(true);
@@ -68,7 +70,12 @@ export function AstCanvas({ result, onNotice }: Props) {
   useEffect(() => {
     const total = view.model.nodes.size;
     if (view.collapsed.size > 0 && total > INITIAL_VISIBLE_BUDGET) {
-      onNotice(`共 ${total.toLocaleString()} 张卡片，已自动折叠较深层级，当前显示 ${view.nodes.length} 张。可点击卡片右上角 ▸ 逐步展开。`);
+      const t = num(total);
+      const shown = view.nodes.length;
+      onNotice({
+        en: `${t} cards in total; deeper levels were collapsed automatically and ${shown} are shown. Use ▸ at a card's top-right corner to expand step by step.`,
+        zh: `共 ${t} 张卡片，已自动折叠较深层级，当前显示 ${shown} 张。可点击卡片右上角 ▸ 逐步展开。`,
+      });
     } else {
       onNotice(null);
     }
@@ -100,7 +107,12 @@ export function AstCanvas({ result, onNotice }: Props) {
       if (
         mode === 'expand' &&
         total > EXPAND_CONFIRM_THRESHOLD &&
-        !window.confirm(`将显示全部 ${total.toLocaleString()} 张卡片，布局和渲染可能需要数秒并使交互变慢。继续？`)
+        !window.confirm(
+          tr(
+            `This will show all ${num(total)} cards. Layout and rendering may take several seconds and interaction will slow down. Continue?`,
+            `将显示全部 ${num(total)} 张卡片，布局和渲染可能需要数秒并使交互变慢。继续？`,
+          ),
+        )
       ) {
         return;
       }
@@ -114,7 +126,7 @@ export function AstCanvas({ result, onNotice }: Props) {
       });
       window.setTimeout(() => flow.fitView({ duration: 300 }), 50);
     },
-    [flow, showHidden, view.model],
+    [flow, showHidden, view.model, tr, num],
   );
 
   const rearrange = useCallback(() => {
@@ -191,7 +203,7 @@ export function AstCanvas({ result, onNotice }: Props) {
         className: active ? 'is-active' : undefined,
         style: { stroke: color },
         data: { label: e.label },
-        ariaLabel: `${e.source} 的 ${e.label} → ${model.nodes.get(e.target)!.type}`,
+        ariaLabel: `${e.source}.${e.label} → ${model.nodes.get(e.target)!.type}`,
       });
     }
     return out;
@@ -202,7 +214,12 @@ export function AstCanvas({ result, onNotice }: Props) {
     if (!viewport) return;
     const count = flow.getNodes().length;
     if (count > EXPORT_MAX_CARDS) {
-      onNotice(`当前显示 ${count.toLocaleString()} 张卡片，超过导出上限 ${EXPORT_MAX_CARDS.toLocaleString()} 张。请先折叠部分子树后再导出。`);
+      const c = num(count);
+      const max = num(EXPORT_MAX_CARDS);
+      onNotice({
+        en: `${c} cards are visible, over the export limit of ${max}. Collapse some subtrees first, then export.`,
+        zh: `当前显示 ${c} 张卡片，超过导出上限 ${max} 张。请先折叠部分子树后再导出。`,
+      });
       return;
     }
     setExporting(true);
@@ -213,17 +230,20 @@ export function AstCanvas({ result, onNotice }: Props) {
       const bounds = flow.getNodesBounds(flow.getNodes());
       const { dataUrl, info } = await exportPng(viewport, bounds, CANVAS_BG);
       downloadDataUrl(dataUrl, 'python-ast.png');
+      const size = `${info.width}×${info.height}`;
+      const pct = Math.round(info.scale * 100);
       onNotice(
         info.scale < 1
-          ? `已导出 PNG（${info.width}×${info.height}，图过大已缩小到 ${Math.round(info.scale * 100)}%）`
-          : `已导出 PNG（${info.width}×${info.height}）`,
+          ? { en: `PNG exported (${size}, scaled down to ${pct}% because the graph is large)`, zh: `已导出 PNG（${size}，图过大已缩小到 ${pct}%）` }
+          : { en: `PNG exported (${size})`, zh: `已导出 PNG（${size}）` },
       );
     } catch (err) {
-      onNotice(`导出失败：${err instanceof Error ? err.message : String(err)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      onNotice({ en: `Export failed: ${msg}`, zh: `导出失败：${msg}` });
     } finally {
       setExporting(false);
     }
-  }, [flow, onNotice]);
+  }, [flow, onNotice, num]);
 
   // 调试接口：仅在 URL 带 ?debug 时暴露，供端到端测试核对 AST 未被修改
   useEffect(() => {
@@ -279,37 +299,51 @@ export function AstCanvas({ result, onNotice }: Props) {
           />
           <Controls showInteractive={false} />
           <Panel position="top-left" className="toolbar">
-            <button type="button" className="btn" onClick={rearrange} title="对当前可见节点重新自动布局">
-              重新排列
+            <button
+              type="button"
+              className="btn"
+              onClick={rearrange}
+              title={tr('Auto-layout the visible cards again', '对当前可见节点重新自动布局')}
+            >
+              {tr('Re-arrange', '重新排列')}
             </button>
             <button type="button" className="btn" onClick={() => flow.fitView({ duration: 300, padding: 0.1 })}>
-              适应屏幕
+              {tr('Fit to screen', '适应屏幕')}
             </button>
             <button type="button" className="btn" onClick={() => setCollapsedAll('expand')}>
-              全部展开
+              {tr('Expand all', '全部展开')}
             </button>
             <button type="button" className="btn" onClick={() => setCollapsedAll('collapse')}>
-              全部折叠
+              {tr('Collapse all', '全部折叠')}
             </button>
             <label className="check">
               <input type="checkbox" checked={showHidden} onChange={(e) => changeShowHidden(e.target.checked)} />
-              显示收纳字段
+              {tr('Show hidden fields', '显示收纳字段')}
             </label>
-            <label className="check" title="Load()/Store()/Add() 等没有字段的节点显示为父卡片上的属性">
+            <label
+              className="check"
+              title={tr(
+                'Show field-less nodes such as Load()/Store()/Add() as attributes on the parent card',
+                'Load()/Store()/Add() 等没有字段的节点显示为父卡片上的属性',
+              )}
+            >
               <input type="checkbox" checked={inlineEmpty} onChange={(e) => changeInline(e.target.checked)} />
-              内联无字段节点
+              {tr('Inline field-less nodes', '内联无字段节点')}
             </label>
             <button type="button" className="btn btn-primary" onClick={doExport} disabled={exporting}>
-              {exporting ? '导出中…' : '导出 PNG'}
+              {exporting ? tr('Exporting…', '导出中…') : tr('Export PNG', '导出 PNG')}
             </button>
             {!showDetail && (
               <button type="button" className="btn" onClick={() => setShowDetail(true)}>
-                详情
+                {tr('Details', '详情')}
               </button>
             )}
           </Panel>
           <Panel position="bottom-left" className="stats">
-            显示 {nodes.length} / {model.nodes.size} 张卡片 · {edges.length} 条连线 · 拖动空白处平移，Shift+拖动框选，⌘/Ctrl+点击多选
+            {tr(
+              `Showing ${num(nodes.length)} / ${num(model.nodes.size)} cards · ${num(edges.length)} edges · drag empty space to pan, Shift+drag to box-select, ⌘/Ctrl+click to multi-select`,
+              `显示 ${num(nodes.length)} / ${num(model.nodes.size)} 张卡片 · ${num(edges.length)} 条连线 · 拖动空白处平移，Shift+拖动框选，⌘/Ctrl+点击多选`,
+            )}
           </Panel>
         </ReactFlow>
         {showDetail && (
