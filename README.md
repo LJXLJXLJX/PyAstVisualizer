@@ -1,72 +1,78 @@
-# Python AST 可视化
+**Live demo: https://ljxljxljx.github.io/PyAstVisualizer/**
 
-把 Python `ast.dump()` 的输出文本粘贴进来，就能看到类似 ComfyUI 的节点画布：每个 AST 节点是一张卡片，子节点通过字段端口（如 `body[0]`、`value`）用曲线相连。AST 内容和结构只读，节点可以自由拖动、框选、折叠、重新排列，并导出 PNG。
+# Python AST Visualizer
 
-- 纯前端：TypeScript + React + Vite，画布用 [React Flow](https://reactflow.dev/)（`@xyflow/react`），初始布局用 Dagre。
-- 解析和渲染都在浏览器本地完成，不上传数据，构建产物可直接部署到 GitHub Pages。
-- 直接解析 `ast.dump` 文本：自写 tokenizer + 递归下降 parser，**不使用** `eval`、`Function`，也不执行输入内容。
+English | [简体中文](README.zh-CN.md)
 
-## 快速开始
+Paste the output of Python's `ast.dump()` and get a ComfyUI-style node canvas: every AST node is a card, and child nodes hang off named field ports (such as `body[0]` or `value`) via curved edges. The AST content and structure are read-only; cards can be freely dragged, box-selected, collapsed, re-arranged, and exported as PNG.
 
-需要 Node.js 22.12+ 或 24+（Vitest 5 的要求；开发时用的是 Node 26 / npm 11）。
+- Front-end only: TypeScript + React + Vite, canvas by [React Flow](https://reactflow.dev/) (`@xyflow/react`), initial layout by Dagre.
+- Parsing and rendering happen entirely in your browser. Nothing is uploaded, and the build output deploys straight to GitHub Pages.
+- Parses `ast.dump` text directly with a hand-written tokenizer and recursive-descent parser. It does **not** use `eval` or `Function` and never executes the input.
+
+## Quick start
+
+Requires Node.js 22.12+ or 24+ (required by Vitest 5; developed on Node 26 / npm 11).
 
 ```bash
 npm install
-npm run dev        # 开发服务器，默认 http://localhost:5173
+npm run dev        # dev server, http://localhost:5173 by default
 ```
 
-在 Python 中生成输入：
+Generate input in Python:
 
 ```python
 import ast
 print(ast.dump(ast.parse(source), indent=2))
-# 也支持单行输出、include_attributes=True、annotate_fields=False
+# single-line output, include_attributes=True and annotate_fields=False also work
 ```
 
-## 常用命令
+## Scripts
 
-| 命令 | 作用 |
+| Command | Purpose |
 | --- | --- |
-| `npm run dev` | 启动开发服务器 |
-| `npm run build` | 类型检查并构建到 `dist/` |
-| `npm run preview` | 本地预览构建产物 |
-| `npm run typecheck` | TypeScript 类型检查 |
+| `npm run dev` | Start the dev server |
+| `npm run build` | Type-check and build to `dist/` |
+| `npm run preview` | Preview the production build locally |
+| `npm run typecheck` | TypeScript type check |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest 单元测试（parser、图模型、视图状态） |
-| `npm run test:e2e` | Playwright 端到端测试（首次需 `npx playwright install chromium`） |
-| `npm run fixtures` | 用本机 Python 重新生成测试夹具和应用内示例 |
+| `npm test` | Vitest unit tests (parser, graph model, view state) |
+| `npm run test:e2e` | Playwright end-to-end tests (first run needs `npx playwright install chromium`) |
+| `npm run fixtures` | Regenerate test fixtures and in-app examples with your local Python |
 
-`test:e2e` 会先以 `BASE_PATH=/PyAstVisualizer/` 构建到 `dist-e2e/` 并用 `vite preview` 启动，因此同时验证了 GitHub Pages 子路径下的资源加载。
+`test:e2e` first builds with `BASE_PATH=/PyAstVisualizer/` into `dist-e2e/` and serves it with `vite preview`, so it also verifies asset loading under a GitHub Pages sub-path.
 
-## 功能
+## Features
 
-**输入**：粘贴文本、打开或拖入本地文本文件、5 个内置示例（函数、循环与分支、表达式、AST 改写后的 Builder 调用、带位置字段）。示例由 `scripts/gen_fixtures.py` 调用真实的 Python `ast.dump` 生成。⌘/Ctrl+Enter 解析。
+**Input**: paste text, open or drag in a local text file, or load one of 5 built-in examples (function, loops and branches, expressions, Builder calls after an AST rewrite, and position fields). The examples are produced by real Python `ast.dump` via `scripts/gen_fixtures.py`. ⌘/Ctrl+Enter parses.
 
-**画布**
+**Canvas**
 
-- 深色网格背景，卡片标题为节点类型，标题颜色按类别区分（定义、控制流、语句、访问/调用、名称、字面量、运算符……）。
-- `name`、`id`、`value` 等简单属性显示在卡片内；子节点通过右侧字段端口连出，列表项保留顺序和索引（`body[0]`、`body[1]`…）。卡片标题右侧还会显示该节点在父节点中的字段名，因此连线两端都能看清。
-- 默认把 `None`、空列表和位置信息（`lineno` 等）收纳为一行"+N 项已收纳"；勾选“显示收纳字段”可在卡片上展开，详情面板始终显示全部字段。
-- 长文本在卡片上只显示摘要；点击节点，在右侧详情面板查看完整 repr、解码后的字符串，并可复制单个属性、节点路径或该节点的原始 dump 文本。
-- **内联无字段节点**（默认开启）：`Load()`、`Store()`、`Add()` 这类没有字段的节点显示为父卡片上的属性，不单独成卡，避免每个 `Name` 都多挂一张 `Load` 卡片。取消勾选后，每个 AST 节点都有自己的卡片。
+- Dark grid background. Card titles are node types, colour-coded by category (definitions, control flow, statements, access/calls, names, literals, operators, …).
+- Simple attributes such as `name`, `id` and `value` appear inside the card. Child nodes connect from field ports on the right, and list items keep their order and index (`body[0]`, `body[1]`, …). Each card header also shows the field name it occupies in its parent, so both ends of an edge are labelled.
+- `None`, empty lists and position info (`lineno` etc.) are folded into a single "+N hidden" row by default. Tick "显示收纳字段" (show hidden fields) to show them on the cards; the details panel always lists every field.
+- Long text is summarised on the card. Click a card to see the full repr and the decoded string in the details panel, and to copy a single attribute, the node path, or the node's original dump text.
+- **Inline no-field nodes** (on by default): nodes without fields such as `Load()`, `Store()` and `Add()` are shown as attributes on the parent card instead of separate cards, so every `Name` doesn't sprout an extra `Load` card. Untick "内联无字段节点" to give every AST node its own card.
 
-**交互**
+**Interaction**
 
-- 拖动节点；Shift+拖动框选，⌘/Ctrl+点击多选，选中的多个节点一起移动。
-- 拖动空白处平移，滚轮缩放，小地图，适应屏幕。
-- 卡片右上角 ▾/▸ 折叠和展开子树；“全部展开”“全部折叠”。
-- 导入时自动布局一次。之后拖动、选择、折叠/展开都**不会**重排已有节点：折叠时记住子节点相对父节点的偏移，展开时跟随父节点当前位置恢复；新出现的节点只在局部布局。需要时点“重新排列”。
-- 导出 PNG（包含全部可见卡片和连线，按内容包围盒裁剪）。
+- Drag cards. Shift+drag to box-select and ⌘/Ctrl+click to multi-select; selected cards move together.
+- Drag empty space to pan, scroll to zoom, use the minimap, or fit to screen.
+- Collapse and expand subtrees with ▾/▸ in the card's top-right corner; "全部展开" (expand all) and "全部折叠" (collapse all) are also available.
+- The graph is auto-laid out once on import. After that, dragging, selecting and collapsing/expanding **never** rearrange existing cards. Collapsing remembers each child's offset from its parent, and expanding restores it relative to the parent's current position. Newly revealed cards are laid out locally. Click "重新排列" (re-arrange) whenever you want a fresh layout.
+- PNG export includes every visible card and edge, cropped to the content bounds.
 
-**只读保证**
+**Read-only guarantees**
 
-- 解析结果整体 `Object.freeze`，任何修改都会抛错。
-- 画布只接收位置、选择、尺寸测量这三类变更，删除/新增/替换节点的变更被丢弃；删除键已禁用；端口 `isConnectable=false`，连线不可重连、不可删除。
-- AST/图模型（`src/parser`、`src/graph/model.ts`）与视图状态（坐标、折叠、选择，`src/graph/view.ts`）分开管理。
+- The parse result is deep-frozen with `Object.freeze`, so any mutation throws.
+- The canvas only accepts position, selection and dimension-measurement changes; changes that remove, add or replace nodes are dropped. The Delete key is disabled, ports have `isConnectable=false`, and edges can't be reconnected or deleted.
+- The AST / graph model (`src/parser`, `src/graph/model.ts`) is kept separate from the view state (positions, collapse, selection — `src/graph/view.ts`).
 
-## 支持的输入格式
+> The UI text is currently in Chinese only.
 
-文法（详见 `src/parser/parser.ts`）：
+## Supported input
+
+Grammar (see `src/parser/parser.ts`):
 
 ```
 value    := node | list | tuple | set | dict | STRING | BYTES | NUMBER | complex
@@ -77,73 +83,73 @@ list     := '[' [value (',' value)* [',']] ']'
 tuple    := '(' ')' | '(' value ',' ')' | '(' value (',' value)+ [','] ')'
 set      := '{' value (',' value)* [','] '}'
 dict     := '{' '}' | '{' value ':' value (',' value ':' value)* [','] '}'
-complex  := '(' NUMBER SIGNED_IMAG ')'          例如 (1+2j)
+complex  := '(' NUMBER SIGNED_IMAG ')'          e.g. (1+2j)
 ```
 
-- 任意节点名（包括非 ASCII 标识符）和限定名 `ast.Name(...)`；命名字段，以及 `annotate_fields=False` 产生的位置参数（显示为 `#0`、`#1`…）。
-- 单行与任意 `indent`（空格、制表符、字符串缩进）格式；`\r\n` 换行。
-- 字符串：单/双引号，全部 Python 转义（`\\ \' \" \n \r \t \a \b \f \v`、八进制、`\xhh`、`\uXXXX`、`\UXXXXXXXX`、行续接），未知转义按 Python 规则保留反斜杠；字符串内的括号、逗号、中文和 emoji 都按数据处理。前缀 `b` `u` `r` 及组合。
-- 字节串：解码为字节，非 ASCII 字符必须转义。
-- 数字：整数（含大整数、`0x/0o/0b`、下划线）、浮点（科学计数法、`inf`、`-inf`、`nan`）、复数（`2j`、`(1-2j)`），保留原文，不丢精度。
-- `include_attributes=True` 带来的 `lineno`、`col_offset`、`end_lineno`、`end_col_offset`。
-- 顶层必须是一个节点；结尾后的多余内容会报错。
+- Any node name (including non-ASCII identifiers) and qualified names like `ast.Name(...)`. Named fields, plus the positional arguments produced by `annotate_fields=False` (shown as `#0`, `#1`, …).
+- Single-line and any `indent` style (spaces, tabs, string indents); `\r\n` line endings.
+- Strings: single or double quotes and every Python escape (`\\ \' \" \n \r \t \a \b \f \v`, octal, `\xhh`, `\uXXXX`, `\UXXXXXXXX`, line continuation). Unknown escapes keep the backslash, as in Python. Brackets, commas, CJK characters and emoji inside strings are treated as data. Prefixes `b`, `u`, `r` and combinations are accepted.
+- Bytes are decoded to byte values; non-ASCII characters must be escaped.
+- Numbers: integers (including big integers, `0x/0o/0b` and underscores), floats (scientific notation, `inf`, `-inf`, `nan`) and complex numbers (`2j`, `(1-2j)`). The original text is kept, so no precision is lost.
+- The `lineno`, `col_offset`, `end_lineno` and `end_col_offset` fields added by `include_attributes=True`.
+- The top level must be a single node; trailing content is an error.
 
-**明确不支持（报错，不会静默丢弃）**：三引号字符串、`\N{...}` 命名转义（Python repr 都不会产生）、注释、`<object at 0x…>` 这类不可解析的 repr、一次输入多个 dump。`frozenset({1})` 这样的调用会被当作名为 `frozenset` 的节点显示。
+**Explicitly unsupported (reported as errors, never silently dropped)**: triple-quoted strings, `\N{...}` named escapes (Python's repr never produces either), comments, unparseable reprs like `<object at 0x…>`, and several dumps in one input. A call like `frozenset({1})` is shown as a node named `frozenset`.
 
-错误信息包含行号、列号（按 Unicode 字符计数，中文算 1 列）和原因，例如 `第 2 行，第 21 列：节点 Name 的字段之间期望 ',' 或 ')'，实际是 'ctx'`，面板中会高亮出错字符。
+Error messages give the line, the column (counted in Unicode characters, so a CJK character is one column) and the reason, for example `第 2 行，第 21 列：节点 Name 的字段之间期望 ',' 或 ')'，实际是 'ctx'` ("line 2, column 21: expected ',' or ')' between fields of node Name, got 'ctx'"). The input panel highlights the offending character.
 
-## 限制与性能
+## Limits and performance
 
-保护上限（`src/parser/parser.ts` 中的 `LIMITS`）：
+Safety limits (`LIMITS` in `src/parser/parser.ts` and constants in `src/components/AstCanvas.tsx`):
 
-| 项目 | 上限 | 超出时 |
+| Item | Limit | When exceeded |
 | --- | --- | --- |
-| 输入长度 | 5,000,000 字符 | 报错“输入过大” |
-| 嵌套深度 | 400 层（节点、列表各算一层） | 报错“嵌套过深”，不会栈溢出 |
-| AST 节点数 | 50,000 | 报错“节点过多” |
-| 初始显示 | 600 张卡片 | 自动折叠较深层级并提示 |
-| “全部展开” | 超过 2,000 张卡片时先确认 | — |
-| 导出 PNG | 1,500 张可见卡片；输出边长 ≤ 8192 px、面积 ≤ 4000 万像素 | 超过卡片数时提示先折叠；尺寸超限时自动缩小 |
+| Input length | 5,000,000 characters | "Input too large" error |
+| Nesting depth | 400 levels (each node or list counts as one) | "Nesting too deep" error, no stack overflow |
+| AST nodes | 50,000 | "Too many nodes" error |
+| Initially shown | 600 cards | Deeper levels are auto-collapsed, with a notice |
+| Expand all | Asks for confirmation above 2,000 cards | — |
+| PNG export | 1,500 visible cards; output side ≤ 8192 px and area ≤ 40 MP | Asks you to collapse first when over the card limit; scales the image down when over the size limit |
 
-在 Apple Silicon Mac、headless Chromium 中实测（生产构建）：
+Measured on an Apple Silicon Mac in headless Chromium (production build):
 
-| 输入 | 结果 |
+| Input | Result |
 | --- | --- |
-| 内置示例（约 50 张卡片） | 即时渲染，导出约 1 秒 |
-| 标准库 `textwrap.py`，带位置字段，173 KB，1,002 张卡片 | 导入 + 初始渲染约 0.25 秒（自动折叠到 551 张）；全部展开约 0.25 秒；重新排列约 0.4 秒；拖动流畅；导出 PNG 约 13 秒 |
-| 标准库 `argparse.py`，567 KB，11,925 个 AST 节点 / 7,687 张卡片 | 解析 17 ms；全部展开约 4.5 秒（Dagre 约 0.9 秒，其余为 DOM 渲染）；缩放约 7–10 fps，明显卡顿；超出导出上限（未导出） |
+| Built-in examples (~50 cards) | Instant render; export takes ~1 s |
+| stdlib `textwrap.py` with position fields, 173 KB, 1,002 cards | Import + first render ~0.25 s (auto-collapsed to 551 cards); expand all ~0.25 s; re-arrange ~0.4 s; dragging is smooth; PNG export ~13 s |
+| stdlib `argparse.py`, 567 KB, 11,925 AST nodes / 7,687 cards | Parse 17 ms; expand all ~4.5 s (Dagre ~0.9 s, the rest is DOM rendering); zoom at ~7–10 fps, clearly laggy; over the export limit (not exported) |
 
-结论：**几百到一千张卡片可流畅浏览**；数千张卡片可以打开，但展开和缩放明显变慢，建议保持部分子树折叠。超过 1,500 张可见卡片时启用视口虚拟化（只渲染视口内的卡片），但整图视图下帮助有限。
+In short, **a few hundred to about a thousand cards browse smoothly**. Several thousand cards open, but expanding and zooming get noticeably slow, so keep some subtrees collapsed. Above 1,500 visible cards, viewport virtualisation renders only on-screen cards, though it helps little in a whole-graph view.
 
-其他已知限制：
+Other known limitations:
 
-- Dagre 的初始布局关闭了交叉最小化以保持字段顺序；局部展开出的新节点可能与已有卡片重叠，点“重新排列”即可。
-- 切换“显示收纳字段”会改变卡片高度，但不会自动重排（按设计，普通交互不重排）。
-- 导出依赖 `html-to-image` 克隆 DOM，只导出 PNG，未提供 SVG。
-- 仅支持深色主题；界面以桌面浏览器为主，窄屏可用但不舒适。
+- The initial Dagre layout turns off crossing minimisation to keep field order. Cards revealed by expanding may overlap existing ones; click "重新排列" (re-arrange) to fix that.
+- Toggling hidden fields changes card heights but doesn't re-lay out automatically (by design, ordinary interaction never re-lays out).
+- Export relies on `html-to-image` cloning the DOM; PNG only, no SVG.
+- Dark theme only. The UI targets desktop browsers; narrow screens work but aren't comfortable.
 
-## 测试
+## Tests
 
-- `tests/parser.test.ts`：嵌套、列表顺序、引号/转义/中文/emoji/孤立代理项、字节串、数字与常量、位置字段、18 类非法输入的行列与原因、深度/大小保护、深度冻结、不执行输入。
-- 真实样例核对：`scripts/gen_fixtures.py` 用 Python `ast.dump` 生成 12 份夹具（单行、indent、制表符缩进、include_attributes、annotate_fields=False、注入的特殊常量、标准库 `textwrap.py`），并按 `ast.dump` 的字段取舍规则导出同构 JSON；测试逐字段比对解析结果。夹具由 Python 3.12 生成。
-- `tests/graph.test.ts`：端口与索引、收纳规则、内联切换时 id 稳定、子树统计、大图初始折叠、布局保持兄弟顺序、拖动只改坐标并丢弃删除/新增、折叠后展开跟随父节点、重新排列。
-- `e2e/app.spec.ts`（Playwright，Chromium）：子路径加载无 404、粘贴导入、错误行列、打开文件、HTML 不被执行、拖动只改坐标、删除键/框选删除/端口拖拽不改变 AST、框选多节点移动、缩放/平移/小地图/适应屏幕、折叠展开、重新排列、详情复制、收纳开关、导出 PNG（校验 PNG 文件头和尺寸）、导出上限提示、千节点性能。
+- `tests/parser.test.ts`: nesting, list order, quotes/escapes/CJK/emoji/lone surrogates, bytes, numbers and constants, position fields, line/column and reason for 18 kinds of invalid input, depth and size limits, deep freezing, and never executing input.
+- Checked against real Python output: `scripts/gen_fixtures.py` uses Python `ast.dump` to produce 12 fixtures (single-line, indent, tab indent, include_attributes, annotate_fields=False, injected special constants, stdlib `textwrap.py`) and exports an equivalent JSON structure following `ast.dump`'s field-selection rules. The tests compare the parse result field by field. Fixtures were generated with Python 3.12.
+- `tests/graph.test.ts`: ports and indices, hiding rules, stable ids when toggling inlining, subtree counts, initial collapse of large graphs, layout keeping sibling order, dragging changing only positions while remove/add changes are dropped, expanding after collapse following the parent, and re-arranging.
+- `e2e/app.spec.ts` (Playwright, Chromium): sub-path loading with no 404s, paste import, error line/column, opening files, HTML not being executed, dragging changing only positions, the Delete key / delete after box-select / port dragging not changing the AST, moving multiple selected cards, zoom/pan/minimap/fit, collapse and expand, re-arrange, copying from details, the hidden-field toggle, PNG export (checks PNG header and size), the export-limit notice, and thousand-card performance.
 
-## 部署到 GitHub Pages
+## Deploying to GitHub Pages
 
-`.github/workflows/deploy.yml` 在推送到 `main` 时运行：类型检查、lint、单元测试，然后以 `BASE_PATH=/<仓库名>/` 构建并用官方 Pages Action 发布。使用前在仓库 Settings → Pages 中把 Source 设为 “GitHub Actions”。
+`.github/workflows/deploy.yml` runs on every push to `main`: type check, lint and unit tests, then a build with `BASE_PATH=/<repository>/`, published with the official Pages actions. Under Settings → Pages, set Source to "GitHub Actions" before using it.
 
-`vite.config.ts` 中 `base` 默认是 `./`（相对路径），因此不设置 `BASE_PATH` 构建出的 `dist/` 也能放在任意子目录下使用。应用没有前端路由，不需要 404 回退。
+`base` in `vite.config.ts` defaults to `./` (relative paths), so a `dist/` built without `BASE_PATH` also works from any sub-directory. The app has no client-side routing, so no 404 fallback is needed.
 
-## 目录结构
+## Project layout
 
 ```
 src/
-  parser/       tokenizer.ts、parser.ts、types.ts —— ast.dump 文本 → 只读 AST
-  graph/        model.ts（AST → 卡片/端口/连线）、layout.ts（Dagre）、view.ts（坐标/折叠/选择）、readonly.ts
-  components/   AstCanvas、AstNodeCard、DetailPanel、InputPanel、导出与剪贴板
-  examples/     由 Python 生成的示例
+  parser/       tokenizer.ts, parser.ts, types.ts — ast.dump text → read-only AST
+  graph/        model.ts (AST → cards/ports/edges), layout.ts (Dagre), view.ts (positions/collapse/selection), readonly.ts
+  components/   AstCanvas, AstNodeCard, DetailPanel, InputPanel, export and clipboard helpers
+  examples/     examples generated by Python
 scripts/gen_fixtures.py
-tests/          单元测试与夹具
-e2e/            Playwright 测试
+tests/          unit tests and fixtures
+e2e/            Playwright tests
 ```
